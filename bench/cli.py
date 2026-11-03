@@ -14,6 +14,7 @@
     bench reset-log                       list every context reset, and where it took effect
     bench reset-log AGENT --how TEXT      write down a reset you did (--method, --after MSG or --at TIME, --result)
     bench dashboard [--out PATH] [--open] write a web page of every recorded conversation
+    bench compare [--out PATH] [--open]   write a web page of every task, step by step, agent by agent
     bench console [--open] [--dry-run]    the dashboard, live in your browser, with a box to send messages from
     bench telegram-login                  link this Mac to your Telegram account by QR code
     bench telegram-logout                 end that session and delete it
@@ -409,6 +410,20 @@ def cmd_dashboard(args: argparse.Namespace) -> None:
         subprocess.run(["open", str(path)])
 
 
+def cmd_compare(args: argparse.Namespace) -> None:
+    from bench import compare
+    since = compare.moment(args.since, "--since")
+    notes = Path(args.notes).expanduser().resolve() if args.notes else compare.NOTES
+    if args.notes and not notes.exists():
+        raise SystemExit(f"bench: no notes file at {notes}")
+    path, unmatched = compare.write(Path(args.out).expanduser().resolve() if args.out else compare.OUT, notes, since)
+    for f in unmatched:
+        print(f"Warning: filed in the notes matched no message: {f}")
+    print(f"Wrote {path}")
+    if args.open:
+        subprocess.run(["open", str(path)])
+
+
 def cmd_console(args: argparse.Namespace) -> None:
     from bench import console
     if args.auto_sync < 0:
@@ -593,6 +608,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", help="where to write it (default data/dashboard.html)")
     p.add_argument("--open", action="store_true", help="open it in your browser afterwards")
     p.set_defaults(func=cmd_dashboard)
+    p = sub.add_parser("compare")
+    p.add_argument("--out", help="where to write it (default data/compare.html)")
+    p.add_argument("--notes", help="your scores and rubrics (default tasks/compare-notes.yaml, if it's there)")
+    p.add_argument("--since", help="leave out anything older than this, like 2026-10-27T21:20:00Z")
+    p.add_argument("--open", action="store_true", help="open it in your browser afterwards")
+    p.set_defaults(func=cmd_compare)
     p = sub.add_parser("console")
     p.add_argument("--port", type=int, default=8787, help="the port on 127.0.0.1 to serve it on (default 8787)")
     p.add_argument("--open", action="store_true", help="open it in your browser")

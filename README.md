@@ -49,24 +49,24 @@ The first `send` asks to let Terminal (or Claude) control Messages. Allow it.
 
 ## Slack (Dots)
 
-Dots are reached through a DM in Slack, sent from your own Slack account through Slack's Web API. Only the **PJTTY** workspace is used (`slack: workspace:` in `config/agents.yaml`). Every command first checks that the token belongs to PJTTY and stops if it doesn't. PJTTY's team ID is pinned the first time, so another workspace with the same name is refused too. The only conversation opened, read or written is the DM with each Slack agent listed.
+Dots are reached through a DM in Slack, sent from your own Slack account through Slack's Web API. Only **one** workspace is used: the one your dot is added to, named under `slack: workspace:` in `config/agents.yaml`. Testers aren't all in the same workspace, so set it to yours (the committed value, PJTTY, is Jassmin's). Every command first checks that the token belongs to that workspace and stops if it doesn't. The workspace's team ID is pinned the first time, so another workspace with the same name is refused too. The only conversation opened, read or written is the DM with each Slack agent listed.
 
-1. Connect your dot to PJTTY: in the ChatGPT desktop app, open the dot's profile → **Add** → Slack, and pick PJTTY. Send it a DM in Slack to check that it answers.
-2. Create the runner's Slack app **in PJTTY**: go to [api.slack.com/apps](https://api.slack.com/apps) → Create New App → From a manifest, pick PJTTY, and paste [config/slack-app-manifest.yaml](config/slack-app-manifest.yaml). Then Install to Workspace.
+1. Connect your dot to your workspace: in the ChatGPT desktop app, open the dot's profile → **Add** → Slack, and pick the workspace. Send it a DM in Slack to check that it answers. Put the workspace's name under `slack: workspace:` in `config/agents.yaml`.
+2. Create the runner's Slack app **in that same workspace**: go to [api.slack.com/apps](https://api.slack.com/apps) → Create New App → From a manifest, pick the workspace, and paste [config/slack-app-manifest.yaml](config/slack-app-manifest.yaml). Then Install to Workspace.
 3. Copy the **User OAuth Token** (`xoxp-…`) from OAuth & Permissions and store it in the Keychain:
 
    ```bash
    security add-generic-password -U -a "$USER" -s agent-runner.slack.user_token -w
    ```
 
-4. In Slack, open the dot's profile → ⋮ → Copy member ID, and put it in `config/agents.yaml` under `dots: handle:`.
-5. Sign in to PJTTY's Slack once in the dedicated Chrome (the agent-runner profile, started with `--remote-debugging-port=9222`; see `CHROME_COMMAND` in [bench/channels/slack_web.py](bench/channels/slack_web.py)):
+4. In Slack, open **your own** dot's profile → ⋮ → Copy member ID, and put it in `config/agents.yaml` under `dots: handle:`, replacing the ID that's there. A dot only answers its owner, so another tester's dot never replies to you.
+5. Sign in to your workspace's Slack once in the dedicated Chrome (the agent-runner profile, started with `--remote-debugging-port=9222`; see `CHROME_COMMAND` in [bench/channels/slack_web.py](bench/channels/slack_web.py)):
 
    ```bash
    uv run bench slack-login
    ```
 
-   If Chrome is already signed in, it says so and stops. Otherwise it opens PJTTY's sign-in page there and waits while you sign in. When Slack offers its desktop app, choose to use Slack in your browser.
+   If Chrome is already signed in, it says so and stops. Otherwise it opens your workspace's sign-in page there and waits while you sign in. When Slack offers its desktop app, choose to use Slack in your browser.
 6. Check everything without sending anything:
 
    ```bash
@@ -75,7 +75,7 @@ Dots are reached through a DM in Slack, sent from your own Slack account through
 
 Then `uv run bench send dots "ping" --listen 120` sends one message and records the reply. `bench sync dots` and `bench listen dots` work the same way as for Telegram. Slack's API has no read receipts or typing indicators, so a reply counts as finished only after the quiet period passes with no new messages or edits.
 
-**Why sending goes through the website:** the dot ignores messages sent through Slack's API, because Slack marks each one with the sending app's ID. So `slack: send_via: web` types each prompt into Slack's web client instead. That's done by `SlackWeb` in [bench/channels/slack_web.py](bench/channels/slack_web.py). It's self-contained: it needs only Playwright and the dedicated Chrome, so it can be reused outside the runner. Its docstring shows how. It opens only `app.slack.com/client/<PJTTY's ID>/<the dot's DM>`. It types only after checking that the tab shows that DM in PJTTY and that the DM's own message box is empty, and never into an open thread's box. Then it clicks Send. Slack's markup lives in one place, `Selectors`, in case Slack changes it. Reading still goes through the API. The dot answers each message in a thread, and the runner records thread replies.
+**Why sending goes through the website:** the dot ignores messages sent through Slack's API, because Slack marks each one with the sending app's ID. So `slack: send_via: web` types each prompt into Slack's web client instead. That's done by `SlackWeb` in [bench/channels/slack_web.py](bench/channels/slack_web.py). It's self-contained: it needs only Playwright and the dedicated Chrome, so it can be reused outside the runner. Its docstring shows how. It opens only `app.slack.com/client/<your workspace's ID>/<the dot's DM>`. It types only after checking that the tab shows that DM in that workspace and that the DM's own message box is empty, and never into an open thread's box. Then it clicks Send. Slack's markup lives in one place, `Selectors`, in case Slack changes it. Reading still goes through the API. The dot answers each message in a thread, and the runner records thread replies.
 
 ## Hark
 
@@ -117,12 +117,28 @@ Leave it running while you use it. Ctrl-C stops it. Only this Mac can reach it, 
 - **Task run** runs `bench run` with the task, step and cell, and writes `runs/…/` as usual. A run is never cut short: messages for its channel wait for it. Stop ends it as Ctrl-C would.
 - **Sync** records what arrived while nothing was recording, as `bench sync` does.
 - **Record a reset** writes down a context reset you did, right after the message where it took effect, as `bench reset-log` does (below).
+- **Hark's cards** (an order summary with a Reserve/Pay button, a table, a titled summary) are drawn as hark.com draws them, from the structure Hark sends (`card` on the recorded event). The button is a label only; nothing on the page presses anything.
 - **Benchmark only** (on by default, in the toolbar) hides what you did with an agent outside the tasks: a message sent without a run, and the agent's replies in the half hour after it. Runs, their messages, and anything the agent sends on its own stay visible. Everything is still recorded underneath; untick it to see it all. (The same toggle is on `bench dashboard`.)
 - **Late replies show up by themselves.** Every 60 seconds the console runs `bench sync` for each agent whose channel is idle (not WhatsApp, which is recorded all the time), so a reply that lands after a message's listening ended is recorded without pressing Sync. A channel with a message or run going is left alone. `--auto-sync 0` turns it off, `--auto-sync 30` makes it faster. Each agent's automatic syncs share one `data/console/autosync-<agent>/` folder.
 
 Each message is sent by running the same bench command you'd type, so the checks, locks and records are the same. Each job's prompt and output are kept in `data/console/<job>/`. If a send fails or you stop it partway, check the conversation before sending again: the message may have gone out anyway.
 
 `--dry-run` shows everything and sends nothing, for trying it out.
+
+## The comparison page
+
+`bench compare` writes a page with every task, step by step, and what each agent did on it, for reading the agents against each other:
+
+```bash
+uv run bench compare --open
+```
+
+- **Each step** shows the prompt once, then each agent's replies and your follow-ups, either one by one or side by side. You can show one agent at a time.
+- **Tasks and steps** come from the `--task` and `--step` your runs recorded, so it works as soon as you've run something. Messages no run accounts for go at the end, as unprompted.
+- **Scores, rubrics and your own notes** are optional. Add them in `tasks/compare-notes.yaml`; what it can hold is at the top of [bench/compare.py](bench/compare.py). A rubric comes from the task sheet, so it stays in that gitignored file.
+- `--since 2026-10-27T21:20:00Z` leaves out anything older, like runs before a reset. `--out PATH` writes it somewhere else.
+
+**Keep the page to yourself.** It's written to `data/compare.html`, which is never committed, and it holds everything said in the chats: your address, phone number and checkout links, if you gave them to an agent.
 
 ## Running a task
 
