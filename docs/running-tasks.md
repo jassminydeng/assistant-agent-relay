@@ -82,6 +82,8 @@ To see every recorded conversation at once:
 uv run bench dashboard --open
 ```
 
+To read every task step by step, with the agents next to each other and your scores on top: `uv run bench compare --open`. See [The comparison page](../README.md#the-comparison-page).
+
 If messages arrived after a run ended, add them to its transcript first:
 
 ```bash

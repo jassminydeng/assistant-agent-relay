@@ -125,6 +125,21 @@ Each message is sent by running the same bench command you'd type, so the checks
 
 `--dry-run` shows everything and sends nothing, for trying it out.
 
+## The comparison page
+
+`bench compare` writes a page with every task, step by step, and what each agent did on it, for reading the agents against each other:
+
+```bash
+uv run bench compare --open
+```
+
+- **Each step** shows the prompt once, then each agent's replies and your follow-ups, either one by one or side by side. You can show one agent at a time.
+- **Tasks and steps** come from the `--task` and `--step` your runs recorded, so it works as soon as you've run something. Messages no run accounts for go at the end, as unprompted.
+- **Scores, rubrics and your own notes** are optional. Add them in `tasks/compare-notes.yaml`; what it can hold is at the top of [bench/compare.py](bench/compare.py). A rubric comes from the task sheet, so it stays in that gitignored file.
+- `--since 2026-10-27T21:20:00Z` leaves out anything older, like runs before a reset. `--out PATH` writes it somewhere else.
+
+**Keep the page to yourself.** It's written to `data/compare.html`, which is never committed, and it holds everything said in the chats: your address, phone number and checkout links, if you gave them to an agent.
+
 ## Running a task
 
 The task sheet isn't in this repo. How to get it, pick a step and score it: [docs/running-tasks.md](docs/running-tasks.md).
