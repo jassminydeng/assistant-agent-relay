@@ -16,7 +16,7 @@ Each agent has two links, and either one can break:
 | **Wajo (Fo)** | Telegram | A Telethon session on your Telegram account | `uv run bench sync wajo` | [wajo-telegram.md](wajo-telegram.md) |
 | **Muse** | WhatsApp | `bench-whatsapp`, a linked device that runs in the background | `uv run bench whatsapp-status` | [muse-instinct-whatsapp.md](muse-instinct-whatsapp.md) |
 | **Instinct** | WhatsApp | The same bridge (not set up yet) | `uv run bench whatsapp-status` | [muse-instinct-whatsapp.md](muse-instinct-whatsapp.md#instinct-once-you-have-access) |
-| **Dots** | Slack (PJTTY only) | A user token for reading, and the dedicated Chrome for sending | `uv run bench slack-status` | [dots-slack.md](dots-slack.md) |
+| **Dots** | Slack (one workspace: the one your dot is in) | A user token for reading, and the dedicated Chrome for sending | `uv run bench slack-status` | [dots-slack.md](dots-slack.md) |
 | **Hark** | hark.com | The dedicated Chrome, signed in to Hark | `uv run bench hark-status` | [hark.md](hark.md) |
 
 Dots and Hark share the [dedicated Chrome](dedicated-chrome.md).
@@ -31,20 +31,36 @@ Do this once on the Mac, before setting up any agent.
    brew install uv go
    ```
 
-2. **Google Chrome** in `/Applications`, for Dots and Hark. Your everyday Chrome is fine, and nothing else needs installing for the browser. See [the dedicated Chrome](dedicated-chrome.md#set-it-up-for-the-first-time).
-3. **Install agent-runner's Python packages,** from `agent-runner/`:
+2. **Get the code from the `telegram-whatsapp-channels` branch.** It's the newest. `main` doesn't have its fixes and docs yet. Clone it into a folder named `agent-runner`, which is the name these docs use:
+
+   ```bash
+   git clone -b telegram-whatsapp-channels https://github.com/shiy1022/assistant-agent-relay.git agent-runner
+   ```
+
+   If you already have a copy, switch it to that branch and update it, from `agent-runner/`. If `git switch` says there's no such branch, run `git fetch origin` first.
+
+   ```bash
+   git switch telegram-whatsapp-channels
+   ```
+
+   ```bash
+   git pull
+   ```
+
+3. **Google Chrome** in `/Applications`, for Dots and Hark. Your everyday Chrome is fine, and nothing else needs installing for the browser. See [the dedicated Chrome](dedicated-chrome.md#set-it-up-for-the-first-time).
+4. **Install agent-runner's Python packages,** from `agent-runner/`:
 
    ```bash
    uv sync
    ```
 
-4. **Run the tests.** They use fakes and touch no real account. They also compile the parked iMessage reader, which needs Xcode's command line tools (`xcode-select --install` if `swiftc` is missing).
+5. **Run the tests.** They use fakes and touch no real account. They also compile the parked iMessage reader, which needs Xcode's command line tools (`xcode-select --install` if `swiftc` is missing).
 
    ```bash
    uv run pytest
    ```
 
-5. **Keep your iPhone nearby.** Telegram and WhatsApp are linked by scanning a QR code with it.
+6. **Keep your iPhone nearby.** Telegram and WhatsApp are linked by scanning a QR code with it.
 
 **Rules for every agent:**
 - Use your own accounts. The runner messages each agent as you.
@@ -93,9 +109,9 @@ All healthy looks like this (checked 2026-10-25):
 bench-whatsapp is running in the background.
 WhatsApp: linked, connected, offline; agents: muse
 
-Slack: PJTTY (https://pjtty.slack.com/), team T0CARQF460P, signed in as <you> (U…)
+Slack: <your workspace> (https://<it>.slack.com/), team T…, signed in as <you> (U…)
 …
-  web client: signed in; yschore-dot (DM) - PJTTY - Slack is open in the dedicated Chrome
+  web client: signed in; <your dot> (DM) - <your workspace> - Slack is open in the dedicated Chrome
 
 Hark: signed in as <your Google email> (<id>)
 Main thread: <thread id> (idle)
@@ -162,7 +178,7 @@ Never commit these or paste them anywhere. The Telegram session and WhatsApp's `
 | Telegram session, Fo's pin | `~/Library/Application Support/agent-runner/telegram/` (`bench.session`, `peers.json`) |
 | WhatsApp bridge | `~/Library/Application Support/agent-runner/whatsapp/` (`session.db`, `agents.json`, `status.json`, `inbox/`) |
 | WhatsApp background job, log | `~/Library/LaunchAgents/local.personal-agent-benchmark.bench-whatsapp.plist`, `~/Library/Logs/bench-whatsapp.log` |
-| Slack pins (PJTTY's team ID, the dot's DM) | `~/Library/Application Support/agent-runner/slack/pins.json` |
+| Slack pins (your workspace's team ID, the dot's DM) | `~/Library/Application Support/agent-runner/slack/pins.json` |
 | Hark pins (account, main thread) | `~/Library/Application Support/agent-runner/hark/pins.json` |
 | Dedicated Chrome profile | `~/Library/Application Support/agent-runner/chrome/` |
 | Recorded messages | `data/inbox/<channel>/` (WhatsApp's are in the bridge's `inbox/`) |
