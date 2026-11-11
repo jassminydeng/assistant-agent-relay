@@ -370,6 +370,29 @@ def test_attachments_are_served_only_from_the_inboxes(server, tmp_path):
         assert request(server, "GET", "/attachment?" + urllib.parse.urlencode({"path": path}), headers=cookie)[0] == 404
 
 
+def test_the_comparison_page_is_served_behind_the_token(server, tmp_path, monkeypatch):
+    from bench import compare
+    monkeypatch.setattr(compare, "RUNS_DIR", tmp_path / "runs")
+    monkeypatch.setattr(compare, "CONVERSATIONS", tmp_path / "conversations")
+    monkeypatch.setattr(compare, "NOTES", tmp_path / "no-notes.yaml")
+    monkeypatch.setattr(compare, "load_agents", lambda: AGENTS)
+    (tmp_path / "runs" / "r1").mkdir(parents=True)
+    (tmp_path / "runs" / "r1" / "run.json").write_text(json.dumps({
+        "run": "r1", "task": "Travel", "step": "DAY 1", "agent": "wajo",
+        "started_at": "2026-10-28T10:00:00Z", "ended_at": "2026-10-28T10:05:00Z"}))
+    (tmp_path / "conversations").mkdir()
+    (tmp_path / "conversations" / "wajo.jsonl").write_text("\n".join(json.dumps(m) for m in (
+        {"id": "1", "role": "user", "text": "Book a trip", "sent_at": "2026-10-28T10:00:00Z"},
+        {"id": "2", "role": "agent", "text": "Booked", "sent_at": "2026-10-28T10:01:00Z",
+         "attachments": [{"path": "/inbox/a b.png", "name": "a b.png", "mime_type": "image/png"}]})))
+    assert request(server, "GET", "/compare")[0] == 403
+    status, headers, body = request(server, "GET", "/compare", headers={"Cookie": f"{console.COOKIE}=s3cret-token"})
+    assert status == 200 and headers["Cache-Control"] == "no-store"
+    assert b"Book a trip" in body and b"Booked" in body
+    assert b'src="/attachment?path=%2Finbox%2Fa+b.png"' in body and b"file://" not in body
+    assert b'href="/compare"' in request(server, "GET", "/", headers={"Cookie": f"{console.COOKIE}=s3cret-token"})[2]
+
+
 def test_stopping_the_console_lets_running_jobs_write_their_records(make):
     c = make()
     [run] = c.submit({"agents": ["dots"], "text": "a task", "mode": "run", "task": "Travel"})

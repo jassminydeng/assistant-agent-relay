@@ -51,7 +51,7 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from bench import conversation, dashboard, resets, snapshots
+from bench import compare, conversation, dashboard, resets, snapshots
 from bench.config import CHANNELS, PRIVATE_DIR, ROOT, Agent, load_agents
 from bench.inbox import inbox_path
 
@@ -652,6 +652,17 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(403, b"Open the console at the address `uv run bench console` printed. It has the token.",
                                   "text/plain; charset=utf-8")
             page = TEMPLATE.read_text().replace("__CONSOLE_TOKEN__", json.dumps(self.server.token))
+            return self._send(200, page.encode(), "text/html; charset=utf-8",
+                              Content_Security_Policy="default-src 'self'; script-src 'unsafe-inline'; "
+                                                      "style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'")
+        if url.path == "/compare":
+            if not self._cookie_ok():
+                return self._send(403, b"Open the console first, at the address `uv run bench console` printed.",
+                                  "text/plain; charset=utf-8")
+            try:
+                page, _ = compare.build(compare.load_notes(compare.NOTES), attachment_url=lambda p: "/attachment?" + urllib.parse.urlencode({"path": p}))
+            except Exception as e:  # a mistake in tasks/compare-notes.yaml, say
+                return self._send(500, f"Couldn't build the comparison page: {e}".encode(), "text/plain; charset=utf-8")
             return self._send(200, page.encode(), "text/html; charset=utf-8",
                               Content_Security_Policy="default-src 'self'; script-src 'unsafe-inline'; "
                                                       "style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'")

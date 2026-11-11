@@ -1,51 +1,26 @@
 # agent-runner
 
-Runs Assistant Bench tasks against personal agents from this Mac and records their replies.
+Runs Assistant Bench tasks against personal agents from this Mac, records every reply, and shows the agents side by side. It reaches each agent the way a person would: Wajo (Fo) over Telegram, Muse over WhatsApp, Dots over Slack, and Hark on hark.com.
 
-> **Now targeting Wajo and Instinct over WhatsApp.** See [../BUILD_PLAN_WHATSAPP.md](../BUILD_PLAN_WHATSAPP.md). The iMessage channel described below (`reader/`, `bench/imessage/send.py`) is built and tested but parked; you don't need to set it up.
+## Quick start
 
-**Use the `telegram-whatsapp-channels` branch.** It's the newest; `main` is behind. How to get it: [Before you start](docs/connections/README.md#before-you-start).
-
-**Setting up an agent, or a connection broke?** [docs/connections/](docs/connections/README.md) has step-by-step first-time setup for each agent and its channel, how to check each connection, and how to reconnect it.
-
-So far (M0): a sender that sends iMessages through the Messages app, and `bench-reader`, the only program allowed to read Messages. It copies the agents' chats, and nothing else, into `data/inbox/`.
-
-## Set up
-
-1. Put the handles in `config/agents.yaml`: phone numbers with country code, or emails. For the dry run, set `self` to your own iMessage handle.
-2. Install the reader:
+1. **Get the code and set up each agent** you're testing: [docs/connections/](docs/connections/README.md). It starts with installing the tools and cloning this repo, then has one page per agent, with how to check its connection and how to reconnect it.
+2. **Open the console** and send your agents a message to check they answer. Leave it running while you test:
 
    ```bash
-   reader/install.sh
+   uv run bench console --open
    ```
 
-3. Approve it in System Settings → Privacy & Security → Full Disk Access. The install script opens that pane and prints the path to add. Then restart it:
+3. **Run the tasks** from the task sheet, step by step: [docs/running-tasks.md](docs/running-tasks.md). Send each step from the console's **Task run** box, or with `bench run`. Either way it's recorded into `runs/`.
+4. **Compare the agents.** Click **Compare agents, task by task** at the top of the console, or write the page to a file:
 
    ```bash
-   launchctl kickstart -k gui/$(id -u)/local.personal-agent-benchmark.bench-reader
+   uv run bench compare --open
    ```
 
-4. Check that it's reading:
+   Each task's steps, in order, with every agent's replies one by one or side by side. Add your scores and notes in `tasks/compare-notes.yaml` and they show up in its table ([The comparison page](#the-comparison-page)).
 
-   ```bash
-   uv run bench reader-status
-   ```
-
-   The log should end with `reading chat.db: …`, listing which agents already have a chat. "authorization denied" means the grant hasn't taken effect yet.
-
-Every change to `config/agents.yaml` needs `reader/install.sh` again, and a new approval.
-
-## Try it
-
-```bash
-uv run bench send self "ping from agent-runner"
-```
-
-```bash
-uv run bench inbox --follow
-```
-
-The first `send` asks to let Terminal (or Claude) control Messages. Allow it.
+Everything recorded stays on this Mac: `data/`, `runs/` and `tasks/` are never committed.
 
 ## Slack (Dots)
 
@@ -123,11 +98,13 @@ Leave it running while you use it. Ctrl-C stops it. Only this Mac can reach it, 
 
 Each message is sent by running the same bench command you'd type, so the checks, locks and records are the same. Each job's prompt and output are kept in `data/console/<job>/`. If a send fails or you stop it partway, check the conversation before sending again: the message may have gone out anyway.
 
+- **Compare agents, task by task** (top of the page) opens [the comparison page](#the-comparison-page), built fresh from what's recorded each time you open it. Pictures in it are served by the console, so they show up there too.
+
 `--dry-run` shows everything and sends nothing, for trying it out.
 
 ## The comparison page
 
-`bench compare` writes a page with every task, step by step, and what each agent did on it, for reading the agents against each other:
+The console shows it at **Compare agents, task by task**. `bench compare` writes the same page to a file, with every task, step by step, and what each agent did on it, for reading the agents against each other:
 
 ```bash
 uv run bench compare --open
@@ -193,6 +170,47 @@ uv run bench reset-log muse --how "Asked Muse to forget everything; you said yes
 `--after` is the message the reset took effect after, usually the agent's "done" (its id in `data/conversations/<agent>.jsonl`, or the id's last part). Without it, the reset is placed at `--at TIME`, or now. `--method` is `asked` (the default), `command` or `by hand`. `uv run bench reset-log` lists them all, and `--remove ID` takes back one written down by mistake.
 
 Clearing a Telegram chat is found without this, from the notice Telegram leaves in the chat. The dashboard and the console show each reset as a marked divider, and each message that did it as part of the reset. What's known about resetting each agent: [docs/context-reset.md](docs/context-reset.md).
+
+## iMessage (parked)
+
+Built and tested, but not used for any agent now; you don't need to set it up. A sender that sends iMessages through the Messages app, and `bench-reader`, the only program allowed to read Messages. It copies the agents' chats, and nothing else, into `data/inbox/`.
+
+### Set up
+
+1. Put the handles in `config/agents.yaml`: phone numbers with country code, or emails. For the dry run, set `self` to your own iMessage handle.
+2. Install the reader:
+
+   ```bash
+   reader/install.sh
+   ```
+
+3. Approve it in System Settings → Privacy & Security → Full Disk Access. The install script opens that pane and prints the path to add. Then restart it:
+
+   ```bash
+   launchctl kickstart -k gui/$(id -u)/local.personal-agent-benchmark.bench-reader
+   ```
+
+4. Check that it's reading:
+
+   ```bash
+   uv run bench reader-status
+   ```
+
+   The log should end with `reading chat.db: …`, listing which agents already have a chat. "authorization denied" means the grant hasn't taken effect yet.
+
+Every change to `config/agents.yaml` needs `reader/install.sh` again, and a new approval.
+
+### Try it
+
+```bash
+uv run bench send self "ping from agent-runner"
+```
+
+```bash
+uv run bench inbox --follow
+```
+
+The first `send` asks to let Terminal (or Claude) control Messages. Allow it.
 
 ## Tests
 

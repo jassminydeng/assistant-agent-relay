@@ -119,10 +119,15 @@ def render(text: str) -> str:
     return "".join(out)
 
 
-def attachments(m: dict) -> str:
+def file_url(path: str) -> str:
+    return "file://" + quote(path)
+
+
+def attachments(m: dict, url=file_url) -> str:
+    """`url` turns a saved file's path into a link: a file:// one for the written page, the console's own when it serves it."""
     out = []
     for a in m.get("attachments") or []:
-        href = "file://" + quote(a.get("path") or "")
+        href = html.escape(url(a.get("path") or ""))
         name = html.escape(a.get("name") or "attachment")
         if (a.get("mime_type") or "").startswith("image/"):
             out.append(f'<a href="{href}"><img class="att" src="{href}" alt="{name}" loading="lazy"></a>')
@@ -238,7 +243,8 @@ def place(convos: dict[str, list[dict]], runs: list[dict], step_of: dict, filed:
     return placed, unprompted, [f for f in filed if f not in used]
 
 
-def build(notes: dict | None = None, since: datetime | None = None, out: Path = OUT, agents: dict[str, str] | None = None) -> tuple[str, list[dict]]:
+def build(notes: dict | None = None, since: datetime | None = None, out: Path = OUT, agents: dict[str, str] | None = None,
+          attachment_url=file_url) -> tuple[str, list[dict]]:
     """Returns the page, and the `filed` entries in the notes that matched no message."""
     notes = notes or {}
     since = since or moment(notes.get("since"), "since in the notes")
@@ -331,7 +337,7 @@ def build(notes: dict | None = None, since: datetime | None = None, out: Path = 
                     who = "You" if m["role"] == "user" else html.escape(short[a])
                     label = {"late": "<span class='tag late'>after recording stopped</span>", "unprompted": "<span class='tag unp'>unprompted</span>"}.get(tag, "")
                     text = render(m.get("text")) or ("" if m.get("attachments") else "<p class='none'>No text.</p>")
-                    body.append(f"<div class='m m-{m['role']}'><div class='meta'>{who} · {local(m['sent_at'])}{label}</div>{text}{attachments(m)}</div>")
+                    body.append(f"<div class='m m-{m['role']}'><div class='meta'>{who} · {local(m['sent_at'])}{label}</div>{text}{attachments(m, attachment_url)}</div>")
                 saved = {}
                 for r in rs:
                     if r["agent"] != a:
@@ -353,7 +359,7 @@ def build(notes: dict | None = None, since: datetime | None = None, out: Path = 
         body.append(f"<article class='agent' data-a='{a}'><header><span class='dot {a}'></span><h4>{html.escape(agents[a])}</h4><span class='facts'>{len(ms)} messages</span></header>")
         for m in ms:
             who = "You" if m["role"] == "user" else html.escape(short[a])
-            body.append(f"<div class='m m-{m['role']}'><div class='meta'>{who} · {local(m['sent_at'])}</div>{render(m.get('text')) or '<p class=none>No text.</p>'}{attachments(m)}</div>")
+            body.append(f"<div class='m m-{m['role']}'><div class='meta'>{who} · {local(m['sent_at'])}</div>{render(m.get('text')) or '<p class=none>No text.</p>'}{attachments(m, attachment_url)}</div>")
         body.append("</article>")
     body.append("</div></section>")
 

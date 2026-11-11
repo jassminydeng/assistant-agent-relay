@@ -95,6 +95,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 header.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; margin-bottom: 16px; }
 header.top h1 { font-size: 22px; font-weight: 650; margin: 0; letter-spacing: -0.01em; }
+header.top .compare-link { margin-right: auto; font-size: 14px; color: var(--imessage); }
 .live { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 13px; }
 .live .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
 .live.on .dot { background: var(--ok); }
@@ -339,6 +340,7 @@ footer code, .hint code, .jobs code, .reset-form code { font-family: ui-monospac
 <div class="wrap">
   <header class="top">
     <h1>agenttest</h1>
+    <a class="compare-link" href="/compare" target="_blank" rel="noopener">Compare agents, task by task ↗</a>
     <div class="live" id="live"><span class="dot"></span><span id="live-text">Connecting…</span></div>
   </header>
   <div class="banner" id="banner" hidden></div>
