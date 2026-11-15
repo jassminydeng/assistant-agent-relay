@@ -28,7 +28,7 @@
     bench hark-login                      sign the dedicated Chrome in to Hark, and pin the account
     bench hark-status                     check Hark's sign-in, message box and token meter without sending
     bench hark-import RUN_DIR             record a Hark run made before the channel existed
-    bench reader-status                   (iMessage, parked) is bench-reader running?
+    bench reader-status                   (iMessage) is bench-reader running?
 """
 
 import argparse
@@ -191,8 +191,34 @@ def converse(agent: Agent, text: str, plan, on_event=print_event) -> None:
                 hark.listen(seconds)
     elif agent.channel == "imessage":
         from bench.imessage.send import send
+        from bench.imessage.inbox import events, open_inbox
+
+        box = open_inbox() if plan.listening else None
         requested_at = send(agent, text)
-        print(f"sent to {agent.name} ({agent.handle}) at {requested_at.astimezone():%H:%M:%S}")
+        print(f"sent to {agent.name} at {requested_at.astimezone():%H:%M:%S}", flush=True)
+        if box is not None:
+            while seconds := plan.next():
+                for event in events(box, agent, requested_at, seconds):
+                    on_event(event)
+
+
+def cmd_imessage_echo(args: argparse.Namespace) -> None:
+    """One-shot test agent for a configured iMessage contact."""
+    from bench.imessage.inbox import events, open_inbox
+    from bench.imessage.send import send
+
+    agent = get_agent(args.agent)
+    if agent.channel != "imessage":
+        raise ChannelError(f"{agent.name} is not an iMessage contact")
+    since = datetime.now(UTC)
+    box = open_inbox()
+    print(f"Waiting for 'bench ping' from {agent.name} (Ctrl-C to stop).", flush=True)
+    for event in events(box, agent, since, None):
+        if (event["kind"] == "new" and not event["is_from_me"]
+                and event.get("text") == "bench ping"):
+            send(agent, "bench pong")
+            print("Replied with 'bench pong'.", flush=True)
+            return
 
 
 def cmd_send(args: argparse.Namespace) -> None:
@@ -207,8 +233,6 @@ def cmd_send(args: argparse.Namespace) -> None:
 def cmd_run(args: argparse.Namespace) -> None:
     from bench import runs
     agent = get_agent(args.agent)
-    if agent.channel == "imessage":
-        raise ChannelError("bench run doesn't support iMessage, which is parked")
     prompt = Path(args.file).read_text()  # exactly as written, with no shell quoting in between
     if not prompt.strip():
         raise ChannelError(f"{args.file} is empty")
@@ -339,6 +363,14 @@ def cmd_listen(args: argparse.Namespace) -> None:
         finally:
             whatsapp.set_online(False)
         return
+    if agent and agent.channel == "imessage":
+        from bench.imessage.inbox import events, open_inbox
+
+        box = open_inbox()
+        print(recording_message(args.seconds), flush=True)
+        for event in events(box, agent, datetime.now(UTC), args.seconds):
+            print_event(event)
+        return
     if agent and agent.channel == "slack":
         with slack_channel(agent) as slack:
             slack.sync()
@@ -362,6 +394,9 @@ def cmd_listen(args: argparse.Namespace) -> None:
 def cmd_sync(args: argparse.Namespace) -> None:
     if args.agent and get_agent(args.agent).channel == "whatsapp":
         print("bench-whatsapp records WhatsApp continuously, so there's nothing to sync. See: uv run bench inbox")
+        return
+    if args.agent and get_agent(args.agent).channel == "imessage":
+        print("bench-reader records iMessage continuously. See: uv run bench inbox --agent " + args.agent)
         return
     if args.agent and get_agent(args.agent).channel == "slack":
         with slack_channel(get_agent(args.agent)) as slack:
@@ -646,6 +681,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("run_dir", help="a runs/… folder with run.json and events.jsonl")
     p.set_defaults(func=cmd_hark_import)
     sub.add_parser("reader-status").set_defaults(func=cmd_reader_status)
+    p = sub.add_parser("imessage-echo", help="reply to one 'bench ping' from a configured contact")
+    p.add_argument("agent")
+    p.set_defaults(func=cmd_imessage_echo)
 
     args = parser.parse_args(argv)
     from bench.channels.hark import HarkError
